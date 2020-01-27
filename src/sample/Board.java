@@ -5,8 +5,12 @@ import javafx.scene.Group;
 import javafx.scene.input.MouseDragEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 
@@ -17,7 +21,7 @@ public class Board
             extends Rectangle {
 
         private boolean isWall = false;
-
+        private int row, column;
 
         public Cell(int x, int y, int width, int height, boolean isWall) {
             super(x, y, width, height);
@@ -58,13 +62,30 @@ public class Board
         public double getCenterY() {
             return this.getY() + this.getHeight() / 2.0;
         }
+
+        private void setRow(int row) {
+            this.row = row;
+        }
+
+        private void setColumn(int column) {
+            this.column = column;
+        }
+
+        public int getRow() {
+            return row;
+        }
+
+        public int getColumn() {
+            return column;
+        }
     }
 
     private int rows, columns, size;
     private Cell[][] grid;
     private Cell start, end;
     private boolean addWall = false;
-
+    private List<Line> path = new ArrayList<>();
+    private int maxID = 0;
 
     public Board(int rows, int cols, int size) {
         this.rows = (rows % 2 == 1 ? rows : rows + 1); //**TO ENSURE ROWS NUMBER IS ODD
@@ -78,9 +99,13 @@ public class Board
         for (int i = 0; i < rows; i++)
             for (int j = 0; j < columns; j++) {
                 this.grid[i][j] = new Cell(size * j, size * i, size, size);
+                this.grid[i][j].setRow(i);
+                this.grid[i][j].setColumn(j);
                 this.grid[i][j].setId(String.valueOf(i * columns + j));
                 this.getChildren().add(this.grid[i][j]);
             }
+        maxID = (rows - 1) * columns + (columns - 1);
+        this.getChildren().addAll(this.path);
     }
 
     private void resetWalls() {
@@ -91,6 +116,10 @@ public class Board
     private void setWallRow(int row, boolean isWall) {
         for (int i = 0; i < columns; i++)
             getItemAt(row, i).setWall(isWall);
+    }
+
+    public Cell[][] getGrid() {
+        return grid;
     }
 
     public void generateRandomWalls(double wallPossibility) {
@@ -105,7 +134,7 @@ public class Board
                     setWallRow(i, true);
                     fillGaps(i, r.nextInt(columns - 2), 1, columns);
                 } else if (i == 1 || i == this.rows - 2)
-                    continue;
+                    setWallRow(i, false);
                 else
                     this.setIsWall(i, j, r.nextDouble() < wallPossibility);
             }
@@ -113,6 +142,13 @@ public class Board
         setEnd();
     }
 
+    public int getRows() {
+        return rows;
+    }
+
+    public int getColumns() {
+        return columns;
+    }
 
     public void generateLinedWalls(double wallPossibility) {
         generateLinedWalls(wallPossibility, System.nanoTime());
@@ -146,7 +182,11 @@ public class Board
     }
 
     public Cell getItemAt(int row, int column) {
-        return grid[row][column];
+        try {
+            return grid[row][column];
+        } catch (IndexOutOfBoundsException ex) {
+            return null;
+        }
     }
 
     public void setIsWall(int row, int column, boolean isWall) {
@@ -185,14 +225,14 @@ public class Board
         for (int i = 1; i < this.rows - 1; i++)
             for (int j = 0; j < this.columns; j++) {
                 getItemAt(i, j).setOnMousePressed(eventHandler);
-                getItemAt(i, j).setOnMouseEntered(eventHandler);
+//                getItemAt(i, j).setOnMouseEntered(eventHandler);
                 getItemAt(i, j).setOnMouseDragEntered(eventHandler);
                 getItemAt(i, j).setOnMouseDragged(eventHandler);
                 getItemAt(i, j).setOnMousePressed(eventHandler);
                 getItemAt(i, j).setOnMouseReleased(eventHandler);
                 getItemAt(i, j).setOnMouseDragOver(eventHandler);
-                getItemAt(i, j).setOnMouseClicked(eventHandler);
-                getItemAt(i, j).setOnMouseExited(eventHandler);
+//                getItemAt(i, j).setOnMouseClicked(eventHandler);
+//                getItemAt(i, j).setOnMouseExited(eventHandler);
                 getItemAt(i, j).setOnDragDetected(eventHandler);
             }
     }
@@ -210,5 +250,116 @@ public class Board
 
     public void setAddWall(boolean addWall) {
         this.addWall = addWall;
+    }
+
+    public void resetPath() {
+        this.path = new ArrayList<>();
+        int childrenCount = this.getChildren().size();
+        for (int i = maxID; i < childrenCount; i++)
+            this.getChildren().remove(i);
+    }
+
+    public void addToPath(double x0, double y0, double x1, double y1) {
+        Line line = new Line(x0, y0, x1, y1);
+        line.setStrokeWidth(2);
+        line.setStroke(Color.DARKGREEN);
+        this.path.add(line);
+    }
+
+    public void addToPath(Cell beginCell, Cell endCell) {
+        addToPath(beginCell.getCenterX(), beginCell.getCenterY(), endCell.getCenterX(), endCell.getCenterY());
+    }
+
+    public void redrawPath() {
+        //this.resetPath();
+        this.getChildren().addAll(this.path);
+    }
+
+    private Cell getNeighbour_Top(Cell cell) {
+        Cell neighbour = this.getItemAt(cell.getRow() - 1, cell.getColumn());
+        if (neighbour == null)
+            return null;
+        return (neighbour.isWall() ? null : neighbour);
+    }
+
+    private Cell getNeighbour_Left(Cell cell) {
+        Cell neighbour = this.getItemAt(cell.getRow(), cell.getColumn() - 1);
+        if (neighbour == null)
+            return null;
+        return (neighbour.isWall() ? null : neighbour);
+    }
+
+    private Cell getNeighbour_Right(Cell cell) {
+        Cell neighbour = this.getItemAt(cell.getRow(), cell.getColumn() + 1);
+        if (neighbour == null)
+            return null;
+        return (neighbour.isWall() ? null : neighbour);
+    }
+
+    private Cell getNeighbour_Bottom(Cell cell) {
+        Cell neighbour = this.getItemAt(cell.getRow() + 1, cell.getColumn());
+        if (neighbour == null)
+            return null;
+        return (neighbour.isWall() ? null : neighbour);
+    }
+
+    private Cell getNeighbour_TopLeft(Cell cell) {
+        Cell neighbour = this.getItemAt(cell.getRow() - 1, cell.getColumn() - 1);
+        if (neighbour == null)
+            return null;
+        return (neighbour.isWall() ? null : neighbour);
+    }
+
+    private Cell getNeighbour_TopRight(Cell cell) {
+        Cell neighbour = this.getItemAt(cell.getRow() - 1, cell.getColumn() + 1);
+        if (neighbour == null)
+            return null;
+        return (neighbour.isWall() ? null : neighbour);
+    }
+
+    private Cell getNeighbour_BottomLeft(Cell cell) {
+        Cell neighbour = this.getItemAt(cell.getRow() + 1, cell.getColumn() - 1);
+        if (neighbour == null)
+            return null;
+        return (neighbour.isWall() ? null : neighbour);
+    }
+
+    private Cell getNeighbour_BottomRight(Cell cell) {
+        Cell neighbour = this.getItemAt(cell.getRow() + 1, cell.getColumn() + 1);
+        if (neighbour == null)
+            return null;
+        return (neighbour.isWall() ? null : neighbour);
+    }
+
+
+    /**
+     * @param cell
+     * @param diagonal x-selected cell
+     *                 1-8 neighbours numbers
+     *                 |5 1 6
+     *                 |2 x 3
+     *                 |7 4 8
+     * @return
+     */
+    public Cell[] getNeighbours(Cell cell, boolean diagonal) {
+        //int row, column;
+        List<Cell> neighbours = new ArrayList<>();
+        neighbours.add(this.getNeighbour_Top(cell));
+        neighbours.add(this.getNeighbour_Left(cell));
+        neighbours.add(this.getNeighbour_Right(cell));
+        neighbours.add(this.getNeighbour_Bottom(cell));
+
+        if (diagonal) {
+            neighbours.add(this.getNeighbour_TopLeft(cell));
+            neighbours.add(this.getNeighbour_TopRight(cell));
+            neighbours.add(this.getNeighbour_BottomLeft(cell));
+            neighbours.add(this.getNeighbour_BottomRight(cell));
+        }
+        neighbours.removeIf(Objects::isNull);
+
+        if (neighbours.size() > 0)
+            return neighbours.toArray(new Cell[neighbours.size()]);
+        else
+            return null;
     }
 }

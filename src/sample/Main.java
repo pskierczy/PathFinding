@@ -3,18 +3,14 @@ package sample;
 import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
-import javafx.event.EventType;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-
-import java.util.Map;
 
 
 public class Main extends Application
@@ -26,7 +22,9 @@ public class Main extends Application
     private VBox vBox;
     private ToggleGroup toggleGroupMazeOptions;
     private Button butGenerate;
-    private Map<EventType<MouseEvent>, CheckBox> MouseEventsDebug;
+    //private Map<EventType<MouseEvent>, CheckBox> MouseEventsDebug;
+    PathfindingAlgorithms pathfindingAlgorithms = new PathfindingAlgorithms();
+
 
     public static void main(String[] args) {
         launch(args);
@@ -77,12 +75,7 @@ public class Main extends Application
 
         //Controls inside Vbox
         butGenerate = new Button("Generate Maze");
-        butGenerate.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                ButtonClickHandler(event);
-            }
-        });
+        butGenerate.setOnAction(event -> ButtonClickHandler(event));
         vBox.getChildren().add(butGenerate);
 
         toggleGroupMazeOptions = new ToggleGroup();
@@ -96,6 +89,12 @@ public class Main extends Application
         vBox.getChildren().addAll(rbRandom, rbLines);
 
         root.getChildren().add(vBox);
+
+        Button butSolve = new Button("Solve");
+        butSolve.setOnAction(event -> ButtonClickHandler(event));
+        vBox.getChildren().add(butSolve);
+
+
         //**for the sake of getting proper dimensional data for vbox
         root.applyCss();
         root.layout();
@@ -114,10 +113,19 @@ public class Main extends Application
     }
 
     private void ButtonClickHandler(ActionEvent buttonAction) {
-        if (toggleGroupMazeOptions.getSelectedToggle().toString().contains("Random"))
-            board.generateRandomWalls(0.25);
-        else
-            board.generateLinedWalls(0.25);
+        if (buttonAction.getSource().toString().contains("Solve")) {
+            new Thread() {
+                public void run() {
+                    pathfindingAlgorithms.A_Star(board);
+                }
+            }.start();
+        }
+        else {
+            if (toggleGroupMazeOptions.getSelectedToggle().toString().contains("Random"))
+                board.generateRandomWalls(0.25);
+            else
+                board.generateLinedWalls(0.25);
+        }
     }
 
     private void MouseHandler(MouseEvent mouseEvent) {
