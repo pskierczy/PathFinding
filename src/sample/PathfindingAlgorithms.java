@@ -43,13 +43,18 @@ public class PathfindingAlgorithms {
                 fScore.putIfAbsent(neighbour, Double.MAX_VALUE);
 
                 tentative_gScore = gScore.get(current) + calcDistance(current, neighbour);
-                System.out.println(String.format("Current: ID:%1s ROW:%2d COL:%3d gScore=%4f fScore=%5f", current.getId(), current.getRow(), current.getColumn(), gScore.get(current), fScore.get(current)));
-                System.out.println(String.format("+++++Neighbour: ID:%1s ROW:%2d COL:%3d tgScore=%4f fScore= %5f", neighbour.getId(), neighbour.getRow(), neighbour.getColumn(), tentative_gScore, tentative_gScore + calcDistance(neighbour, endCell)));
+//                System.out.println(String.format("Current: ID:%1s ROW:%2d COL:%3d gScore=%4f fScore=%5f", current.getId(), current.getRow(), current.getColumn(), gScore.get(current), fScore.get(current)));
+//                System.out.println(String.format("+++++Neighbour: ID:%1s ROW:%2d COL:%3d tgScore=%4f fScore= %5f", neighbour.getId(), neighbour.getRow(), neighbour.getColumn(), tentative_gScore, tentative_gScore + calcDistance(neighbour, endCell)));
 
                 if (tentative_gScore < gScore.get(neighbour)) {
                     cameFrom.put(neighbour, current);
                     gScore.put(neighbour, tentative_gScore);
                     fScore.put(neighbour, tentative_gScore + calcDistance(neighbour, endCell));
+
+                    Platform.runLater(() -> {
+                        CreatePath(board, cameFrom, endCell);
+                    });
+
 
                     if (!openSet.contains(neighbour))
                         openSet.add(neighbour);
@@ -69,6 +74,52 @@ public class PathfindingAlgorithms {
         }
 
         return false;
+    }
+
+
+    public boolean A_Star_SingleStep(Board board, List<Board.Cell> openSet, Map<Board.Cell, Board.Cell> cameFrom,
+                                     Map<Board.Cell, Double> gScore, Map<Board.Cell, Double> fScore, Board.Cell endCell) {
+
+        Double tentative_gScore;
+        if (openSet.isEmpty())
+            return false;
+
+        Board.Cell current = getKeyOfMinimum(fScore, openSet);
+
+        if (current == endCell) {
+            CreatePath(board, cameFrom, endCell);
+            return false;
+        }
+        openSet.remove(current);
+
+
+        if (!(current == board.getStart() || current == endCell)) {
+            current.setFill(Color.YELLOW);
+            for (Board.Cell openSetCell : openSet
+            ) {
+                if (openSetCell != endCell)
+                    openSetCell.setFill(Color.VIOLET);
+            }
+        }
+
+        for (Board.Cell neighbour : board.getNeighbours(current, true)) {
+            gScore.putIfAbsent(neighbour, Double.MAX_VALUE);
+            fScore.putIfAbsent(neighbour, Double.MAX_VALUE);
+
+            tentative_gScore = gScore.get(current) + calcDistance(current, neighbour);
+
+            if (tentative_gScore < gScore.get(neighbour)) {
+                cameFrom.put(neighbour, current);
+                gScore.put(neighbour, tentative_gScore);
+                fScore.put(neighbour, tentative_gScore + calcDistance(neighbour, endCell));
+
+                CreatePath(board, cameFrom, neighbour);
+
+                if (!openSet.contains(neighbour))
+                    openSet.add(neighbour);
+            }
+        }
+        return true;
     }
 
 
@@ -147,14 +198,14 @@ public class PathfindingAlgorithms {
         return false;
     }
 
-    private double calcDistance(Board.Cell current, Board.Cell end, boolean includeDiagonals) {
+    public double calcDistance(Board.Cell current, Board.Cell end, boolean includeDiagonals) {
         if (includeDiagonals)
             return Math.sqrt(Math.pow(end.getCenterX() - current.getCenterX(), 2) + Math.pow(end.getCenterY() - current.getCenterY(), 2));
         else
             return (end.getCenterX() - current.getCenterX()) + (end.getCenterY() - current.getCenterY());
     }
 
-    private double calcDistance(Board.Cell current, Board.Cell end) {
+    public double calcDistance(Board.Cell current, Board.Cell end) {
         return calcDistance(current, end, true);
     }
 

@@ -2,6 +2,7 @@ package sample;
 
 import javafx.event.EventHandler;
 import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.input.MouseDragEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
@@ -27,7 +28,7 @@ public class Board
             super(x, y, width, height);
             setWall(isWall);
             this.setStroke(Color.BLACK);
-            this.setStrokeWidth(1);
+            this.setStrokeWidth(Math.min(width, height) / 20);
         }
 
         public Cell() {
@@ -78,6 +79,8 @@ public class Board
         public int getColumn() {
             return column;
         }
+
+
     }
 
     private int rows, columns, size;
@@ -90,7 +93,7 @@ public class Board
     public Board(int rows, int cols, int size) {
         this.rows = (rows % 2 == 1 ? rows : rows + 1); //**TO ENSURE ROWS NUMBER IS ODD
         this.columns = cols;
-        this.grid = new Cell[rows][cols];
+        this.grid = new Cell[this.rows][this.columns];
         this.size = size;
         initializeGrid();
     }
@@ -109,6 +112,7 @@ public class Board
     }
 
     private void resetWalls() {
+        this.resetPath();
         this.getChildren().forEach(grid ->
                 ((Cell) grid).setWall(false));
     }
@@ -127,6 +131,7 @@ public class Board
     }
 
     public void generateRandomWalls(double wallPossibility, long seed) {
+        this.resetPath();
         Random r = new Random(seed);
         for (int i = 0; i < this.rows; i++)
             for (int j = 0; j < columns; j++) {
@@ -155,6 +160,7 @@ public class Board
     }
 
     public void generateLinedWalls(double wallPossibility, long seed) {
+        this.resetPath();
         Random r = new Random(seed);
         int nextStart;
         resetWalls();
@@ -253,10 +259,14 @@ public class Board
     }
 
     public void resetPath() {
+        this.getChildren().removeAll(this.path);
         this.path = new ArrayList<>();
-        int childrenCount = this.getChildren().size();
-        for (int i = maxID; i < childrenCount; i++)
-            this.getChildren().remove(i);
+        //this.path = new ArrayList<>();
+//        int childrenCount = this.getChildren().size();
+//        for (Node n : this.getChildren()) {
+//            if (n instanceof Line)
+//                this.getChildren().remove(n);
+//        }
     }
 
     public void addToPath(double x0, double y0, double x1, double y1) {
@@ -344,6 +354,46 @@ public class Board
     public Cell[] getNeighbours(Cell cell, boolean diagonal) {
         //int row, column;
         List<Cell> neighbours = new ArrayList<>();
+        Cell topNeighbour, leftNeighbour, rightNeighbour, bottomNeighbour;
+
+        topNeighbour = this.getNeighbour_Top(cell);
+        leftNeighbour = this.getNeighbour_Left(cell);
+        rightNeighbour = this.getNeighbour_Right(cell);
+        bottomNeighbour = this.getNeighbour_Bottom(cell);
+
+        neighbours.add(topNeighbour);
+        neighbours.add(leftNeighbour);
+        neighbours.add(rightNeighbour);
+        neighbours.add(bottomNeighbour);
+
+        if (diagonal) {
+            //if top is not wall and left is not wall - add diagonal.
+            if (!isNullOrWall(topNeighbour) && !isNullOrWall(leftNeighbour))
+                neighbours.add(this.getNeighbour_TopLeft(cell));
+
+            //if top is not wall and right is not wall - add diagonal.
+            if (!isNullOrWall(topNeighbour) && !isNullOrWall(rightNeighbour))
+                neighbours.add(this.getNeighbour_TopRight(cell));
+
+            //if bottom is not wall and left is not wall - add diagonal.
+            if (!isNullOrWall(bottomNeighbour) && !isNullOrWall(leftNeighbour))
+                neighbours.add(this.getNeighbour_BottomLeft(cell));
+
+            //if bottom is not wall and right is not wall - add diagonal.
+            if (!isNullOrWall(bottomNeighbour) && !isNullOrWall(rightNeighbour))
+                neighbours.add(this.getNeighbour_BottomRight(cell));
+        }
+        neighbours.removeIf(Objects::isNull);
+
+        if (neighbours.size() > 0)
+            return neighbours.toArray(new Cell[neighbours.size()]);
+        else
+            return null;
+    }
+
+    public Cell[] getNeighbours_orginal(Cell cell, boolean diagonal) {
+        //int row, column;
+        List<Cell> neighbours = new ArrayList<>();
         neighbours.add(this.getNeighbour_Top(cell));
         neighbours.add(this.getNeighbour_Left(cell));
         neighbours.add(this.getNeighbour_Right(cell));
@@ -361,5 +411,11 @@ public class Board
             return neighbours.toArray(new Cell[neighbours.size()]);
         else
             return null;
+    }
+
+    public boolean isNullOrWall(Cell cell) {
+        if (cell == null)
+            return true;
+        return cell.isWall();
     }
 }

@@ -1,5 +1,6 @@
 package sample;
 
+import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -12,18 +13,34 @@ import javafx.scene.input.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 
 public class Main extends Application
         implements EventHandler<KeyEvent> {
     final private int WIDTH = 600;
     final private int HEIGHT = 600;
     //    private Group root;
+    final private double WALL_CHANCE = 0.4;
     private Board board;
     private VBox vBox;
     private ToggleGroup toggleGroupMazeOptions;
     private Button butGenerate;
     //private Map<EventType<MouseEvent>, CheckBox> MouseEventsDebug;
     PathfindingAlgorithms pathfindingAlgorithms = new PathfindingAlgorithms();
+    AnimationTimer animationTimer;
+
+    List<Board.Cell> openSet = new ArrayList<>();
+
+    Map<Board.Cell, Board.Cell> cameFrom = new HashMap<Board.Cell, Board.Cell>();
+    Map<Board.Cell, Double> gScore = new HashMap<Board.Cell, Double>();
+    Map<Board.Cell, Double> fScore = new HashMap<Board.Cell, Double>();
+
+    Board.Cell current;
+    Board.Cell endCell;
 
 
     public static void main(String[] args) {
@@ -38,15 +55,52 @@ public class Main extends Application
         root.setFocusTraversable(true);
         root.requestFocus();
         root.setOnKeyReleased(this);
+
+        initSolverVariables();
+
+        animationTimer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                Update();
+            }
+        };
+
+
         //root.setOnMouseMoved(this);
 //        root.setOnMouseClicked(this);
     }
 
+    private void Update() {
+
+        if (pathfindingAlgorithms.A_Star_SingleStep(board, openSet, cameFrom, gScore, fScore, board.getEnd()) == false)
+            animationTimer.stop();
+//        if (current == null)
+//            animationTimer.stop();
+//        if (current == endCell)
+//            animationTimer.stop();
+//        if (openSet.isEmpty())
+//            animationTimer.stop();
+    }
+
+    private void initSolverVariables() {
+        openSet.clear();
+        cameFrom.clear();
+        gScore.clear();
+        fScore.clear();
+
+        current = board.getStart();
+        endCell = board.getEnd();
+
+        openSet.add(current);
+        gScore.put(current, 0.0);
+        fScore.put(current, pathfindingAlgorithms.calcDistance(current, endCell));
+    }
 
     void Initialize(Stage stage, Group root) {
         Scene scene = new Scene(root, WIDTH, HEIGHT);
         stage.setTitle("Path Finding");
         stage.setScene(scene);
+        stage.setMaximized(true);
         stage.show();
 
         //init main variables
@@ -59,10 +113,10 @@ public class Main extends Application
     }
 
     private void initScene(Group root) {
-        board = new Board(21, 20, 20);
+        board = new Board(49 * 4, 85 * 4, 5);
         board.setLayoutX(vBox.getLayoutX() + vBox.getWidth() + 20);
         board.setLayoutY(20);
-        board.generateRandomWalls(0.25);
+        board.generateRandomWalls(WALL_CHANCE);
         root.getChildren().add(board);
     }
 
@@ -114,17 +168,14 @@ public class Main extends Application
 
     private void ButtonClickHandler(ActionEvent buttonAction) {
         if (buttonAction.getSource().toString().contains("Solve")) {
-            new Thread() {
-                public void run() {
-                    pathfindingAlgorithms.A_Star(board);
-                }
-            }.start();
-        }
-        else {
+            animationTimer.start();
+        } else {
             if (toggleGroupMazeOptions.getSelectedToggle().toString().contains("Random"))
-                board.generateRandomWalls(0.25);
+                board.generateRandomWalls(WALL_CHANCE);
             else
-                board.generateLinedWalls(0.25);
+                board.generateLinedWalls(WALL_CHANCE);
+
+            initSolverVariables();
         }
     }
 
